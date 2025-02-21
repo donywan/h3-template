@@ -8,10 +8,10 @@ userRoute.get("/one", defineEventHandler(() => {
     }
 }))
 
-userRoute.get("/", defineEventHandler(() => {
+userRoute.get("/", async () => {
     return {
         message: "Hello User 2"
     }
-}))
+})
 
 export default userRoute;

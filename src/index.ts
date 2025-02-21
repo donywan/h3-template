@@ -4,21 +4,16 @@ import { appRoutes } from "./app";
 
 const server = createH3({
     onRequest: (req) => {
-        // 处理jwt 
-        // console.log(req.ip);
-        // console.log(req.request);
-        // console.log(req.url);
-        // console.log(req.response);
     }
 })
 
-server.get("/", (c) => {
+server.get("/", async (c) => {
     return { message: "Hello, h3!" };
 });
 
 
 server.use('/admin/**', withBase('/admin', adminRoutes));
-server.use('/admin/**', withBase('/app', appRoutes));
+server.use('/app/**', withBase('/app', appRoutes));
 
 Bun.serve({
     port: 3000,
