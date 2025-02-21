@@ -4,7 +4,7 @@ import positionRoute from "./routes/position_route";
 
 const adminRoutes = createH3();
 
-adminRoutes.use(withBase('/user', userRoute.handler))
-adminRoutes.use(withBase('/position', positionRoute.handler));
+adminRoutes.use(withBase('/user', userRoute))
+adminRoutes.use(withBase('/position', positionRoute));
 
 export default adminRoutes;

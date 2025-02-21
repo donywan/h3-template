@@ -1,12 +1,24 @@
-import { createH3, defineEventHandler, toWebHandler, withBase } from "h3-nightly";
+import { createH3, toWebHandler, withBase } from "h3-nightly";
 import adminRoutes from "./admin";
-import userRoute from "./admin/routes/user_route";
 import { appRoutes } from "./app";
 
-const server = createH3()
+const server = createH3({
+    onRequest: (req) => {
+        // 处理jwt 
+        // console.log(req.ip);
+        // console.log(req.request);
+        // console.log(req.url);
+        // console.log(req.response);
+    }
+})
 
-server.use(withBase('/admin', adminRoutes));
-server.use(withBase('/app', appRoutes));
+server.get("/", (c) => {
+    return { message: "Hello, h3!" };
+});
+
+
+server.use('/admin/**', withBase('/admin', adminRoutes));
+server.use('/admin/**', withBase('/app', appRoutes));
 
 Bun.serve({
     port: 3000,
