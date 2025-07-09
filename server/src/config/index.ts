@@ -56,6 +56,9 @@ export interface AppConfig {
   logging: {
     level: string;
     format: string;
+    prettyPrint: boolean;
+    timestamp: boolean;
+    colorize: boolean;
   };
 }
 
@@ -127,6 +130,9 @@ export const appConfig: AppConfig = {
   logging: {
     level: getEnvVar('LOG_LEVEL', 'info'),
     format: getEnvVar('LOG_FORMAT', 'json'),
+    prettyPrint: getEnvBoolean('LOG_PRETTY_PRINT', env === 'development'),
+    timestamp: getEnvBoolean('LOG_TIMESTAMP', true),
+    colorize: getEnvBoolean('LOG_COLORIZE', env === 'development'),
   },
 };
 
