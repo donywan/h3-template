@@ -1,10 +1,10 @@
-import { createH3, withBase } from "h3-nightly";
+import { H3 } from "h3";
 import userRoute from "./routes/user_route";
 import positionRoute from "./routes/position_route";
 
-const adminRoutes = createH3();
+const adminRoutes = new H3()
 
-adminRoutes.use(withBase('/user', userRoute))
-adminRoutes.use(withBase('/position', positionRoute));
+adminRoutes.mount('/user', userRoute)
+adminRoutes.mount('/position', positionRoute)
 
 export default adminRoutes;

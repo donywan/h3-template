@@ -1,7 +1,7 @@
-import { createH3, eventHandler } from "h3-nightly";
+import { H3 } from "h3";
 
-export const userRoute = createH3()
+export const userRoute = new H3()
 
-userRoute.get("/", eventHandler((c) => {
+userRoute.get("/", () => {
     return { message: "Hello, app!" }
-}));
+});

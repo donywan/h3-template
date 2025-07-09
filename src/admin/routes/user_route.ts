@@ -1,12 +1,6 @@
-import { createH3, defineEventHandler } from "h3-nightly";
+import { H3 } from "h3";
 
-const userRoute = createH3()
-
-userRoute.get("/one", defineEventHandler(() => {
-    return {
-        message: "Hello User"
-    }
-}))
+const userRoute = new H3()
 
 userRoute.get("/", async () => {
     return {

@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  # H3 开发服务器
+  app-dev:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - DB_HOST=db-dev
+      - DB_PORT=5432
+      - DB_NAME=h3_dev_db
+      - DB_USER=postgres
+      - DB_PASSWORD=dev_password
+      - REDIS_HOST=redis-dev
+      - REDIS_PORT=6379
+      - LOG_LEVEL=debug
+    volumes:
+      - ..:/app
+      - /app/node_modules
+    depends_on:
+      - db-dev
+      - redis-dev
+    restart: unless-stopped
+    networks:
+      - dev-network
+
+  # PostgreSQL 开发数据库
+  db-dev:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=h3_dev_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - dev_postgres_data:/var/lib/postgresql/data
+      - ./init-dev.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+    networks:
+      - dev-network
+
+  # Redis 开发缓存
+  redis-dev:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    networks:
+      - dev-network
+
+volumes:
+  dev_postgres_data:
+
+networks:
+  dev-network:
+    driver: bridge

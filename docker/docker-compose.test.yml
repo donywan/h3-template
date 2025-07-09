@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  # H3 测试服务器
+  app-test:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=test
+      - PORT=3001
+      - DB_HOST=db-test
+      - DB_PORT=5432
+      - DB_NAME=h3_test_db
+      - DB_USER=test_user
+      - DB_PASSWORD=test_password
+      - REDIS_HOST=redis-test
+      - REDIS_PORT=6379
+      - LOG_LEVEL=error
+    volumes:
+      - ..:/app
+      - /app/node_modules
+    depends_on:
+      - db-test
+      - redis-test
+    restart: unless-stopped
+    networks:
+      - test-network
+    command: ["bun", "run", "start:test"]
+
+  # PostgreSQL 测试数据库
+  db-test:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=h3_test_db
+      - POSTGRES_USER=test_user
+      - POSTGRES_PASSWORD=test_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - test_postgres_data:/var/lib/postgresql/data
+      - ./init-test.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+    networks:
+      - test-network
+    command: postgres -c log_statement=none -c log_min_messages=warning
+
+  # Redis 测试缓存
+  redis-test:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    restart: unless-stopped
+    networks:
+      - test-network
+    command: redis-server --loglevel warning
+
+volumes:
+  test_postgres_data:
+
+networks:
+  test-network:
+    driver: bridge

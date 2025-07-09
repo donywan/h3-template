@@ -1,9 +1,9 @@
-import { createH3, defineEventHandler } from "h3-nightly";
+import { H3 } from "h3";
 
-const positionRoute = createH3();
+const positionRoute = new H3();
 
-positionRoute.get("/", defineEventHandler(() => {
+positionRoute.get("/", () => {
     return { message: "Hello, position!" }
-}))
+})
 
 export default positionRoute;
