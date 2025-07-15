@@ -1,22 +1,47 @@
 import { H3, readBody } from "h3";
 import { UserService } from "../../service/user_service";
 import { wechatLoginSchema, type WechatUserInfo } from "../../db/schema/users";
+import { getCurrentUser, isAuthenticated } from "../../middleware/auth";
+import { JWTUtils } from "../../utils/jwt";
 
 export const userRoute = new H3()
 
-// 用户信息接口
+// 用户信息接口 (需要JWT鉴权)
 userRoute.get("/profile", async (event) => {
     try {
-        // 这里应该从JWT token中获取用户ID
-        // 暂时返回示例响应
+        // 检查用户是否已认证
+        if (!isAuthenticated(event)) {
+            return {
+                success: false,
+                message: "需要登录"
+            };
+        }
+
+        // 从JWT token中获取用户信息
+        const currentUser = getCurrentUser(event);
+        if (!currentUser) {
+            return {
+                success: false,
+                message: "用户信息无效"
+            };
+        }
+
+        // 从数据库获取完整用户信息
+        const user = await UserService.findById(currentUser.userId);
+        if (!user) {
+            return {
+                success: false,
+                message: "用户不存在"
+            };
+        }
+
+        // 移除敏感信息
+        const { passwordHash, accessToken, refreshToken, ...safeUser } = user;
+
         return {
             success: true,
             message: "获取用户信息成功",
-            data: {
-                id: "example-user-id",
-                name: "示例用户",
-                avatar: "https://example.com/avatar.jpg"
-            }
+            data: safeUser
         };
     } catch (error) {
         return {
@@ -51,27 +76,18 @@ userRoute.post("/login/email", async (event) => {
         const clientIp = event.node?.req?.socket?.remoteAddress || 'unknown';
         await UserService.updateLoginInfo(user.id, clientIp);
 
-        // 生成访问令牌
-        const accessToken = UserService.generateAccessToken();
-        const refreshToken = UserService.generateRefreshToken();
-
-        // 更新用户令牌
-        await UserService.update(user.id, {
-            accessToken,
-            refreshToken,
-            tokenExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7天后过期
-        });
+        // 生成JWT令牌对
+        const tokens = await UserService.generateJWTTokens(user);
 
         // 移除敏感信息
-        const { passwordHash, ...safeUser } = user;
+        const { passwordHash, accessToken: oldAccessToken, refreshToken: oldRefreshToken, ...safeUser } = user;
 
         return {
             success: true,
             message: "登录成功",
             data: {
                 user: safeUser,
-                accessToken,
-                refreshToken,
+                ...tokens,
             }
         };
     } catch (error) {
@@ -107,27 +123,18 @@ userRoute.post("/login/phone", async (event) => {
         const clientIp = event.node?.req?.socket?.remoteAddress || 'unknown';
         await UserService.updateLoginInfo(user.id, clientIp);
 
-        // 生成访问令牌
-        const accessToken = UserService.generateAccessToken();
-        const refreshToken = UserService.generateRefreshToken();
-
-        // 更新用户令牌
-        await UserService.update(user.id, {
-            accessToken,
-            refreshToken,
-            tokenExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7天后过期
-        });
+        // 生成JWT令牌对
+        const tokens = await UserService.generateJWTTokens(user);
 
         // 移除敏感信息
-        const { passwordHash, ...safeUser } = user;
+        const { passwordHash, accessToken: oldAccessToken, refreshToken: oldRefreshToken, ...safeUser } = user;
 
         return {
             success: true,
             message: "登录成功",
             data: {
                 user: safeUser,
-                accessToken,
-                refreshToken,
+                ...tokens,
             }
         };
     } catch (error) {
@@ -164,24 +171,15 @@ userRoute.post("/login/wechat", async (event) => {
         const clientIp = event.node?.req?.socket?.remoteAddress || 'unknown';
         await UserService.updateLoginInfo(user.id, clientIp);
 
-        // 生成访问令牌
-        const accessToken = UserService.generateAccessToken();
-        const refreshToken = UserService.generateRefreshToken();
-
-        // 更新用户令牌
-        await UserService.update(user.id, {
-            accessToken,
-            refreshToken,
-            tokenExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7天后过期
-        });
+        // 生成JWT令牌对
+        const tokens = await UserService.generateJWTTokens(user);
 
         return {
             success: true,
             message: "微信登录成功",
             data: {
                 user,
-                accessToken,
-                refreshToken,
+                ...tokens,
             }
         };
     } catch (error) {
@@ -254,11 +252,50 @@ userRoute.post("/register/phone", async (event) => {
     }
 });
 
-// 退出登录
-userRoute.post("/logout", async () => {
+// 刷新访问令牌
+userRoute.post("/refresh-token", async (event) => {
     try {
-        // 这里应该从JWT token中获取用户ID
-        // 清除用户的访问令牌
+        const body = await readBody(event) as { refreshToken?: string };
+        const { refreshToken } = body;
+
+        if (!refreshToken) {
+            return {
+                success: false,
+                message: "刷新令牌不能为空"
+            };
+        }
+
+        const result = await UserService.refreshJWTToken(refreshToken);
+        if (!result) {
+            return {
+                success: false,
+                message: "刷新令牌无效或已过期"
+            };
+        }
+
+        return {
+            success: true,
+            message: "令牌刷新成功",
+            data: result
+        };
+    } catch (error) {
+        return {
+            success: false,
+            message: error instanceof Error ? error.message : "令牌刷新失败"
+        };
+    }
+});
+
+// 退出登录
+userRoute.post("/logout", async (event) => {
+    try {
+        // 从JWT token中获取用户信息
+        const currentUser = getCurrentUser(event);
+        if (currentUser) {
+            // 这里可以将token加入黑名单或清除用户的刷新令牌
+            // 暂时只返回成功响应
+        }
+
         return {
             success: true,
             message: "退出登录成功"

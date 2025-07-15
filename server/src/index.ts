@@ -4,20 +4,18 @@ import { appRoutes } from "./app";
 import { appConfig, validateConfig, getDatabaseUrl } from "./config";
 import { createLoggerPlugin, logger, log, bizLog, perfLog } from "./plugins/logger";
 import { testConnection, healthCheck, gracefulShutdown, getPoolStatus } from "./db/connection";
+import { createAuthMiddleware } from "./middleware/auth";
 
 // 验证配置
 validateConfig();
-console.log('✅ Config validated');
 
 // 初始化日志
 log.info('🚀 Starting H3 server application...');
 log.info(`📊 Environment: ${appConfig.env}`);
 log.info(`🌐 Server: ${appConfig.server.host}:${appConfig.server.port}`);
-console.log('✅ Logger initialized');
 
 // 测试数据库连接
 testConnection();
-console.log('✅ Database connection tested');
 
 const server = new H3()
 
@@ -27,6 +25,27 @@ server.register(createLoggerPlugin({
   prettyPrint: appConfig.logging.prettyPrint,
   timestamp: appConfig.logging.timestamp,
   colorize: appConfig.logging.colorize,
+}));
+
+// 注册JWT鉴权中间件
+server.use('/', createAuthMiddleware({
+  excludePaths: [
+    '/health',
+    '/db/status',
+    // 登录相关接口
+    '/app/user/login/email',
+    '/app/user/login/phone',
+    '/app/user/login/wechat',
+    '/app/user/register/email',
+    '/app/user/register/phone',
+    '/app/user/refresh-token',
+    // 公开接口
+    '/app/user/forgot-password',
+    '/app/user/reset-password',
+  ],
+  optionalPaths: [
+    '/app/user/profile', // 可选鉴权
+  ],
 }));
 
 // 健康检查路由

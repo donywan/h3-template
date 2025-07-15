@@ -2,6 +2,7 @@ import { eq, or } from 'drizzle-orm';
 import { db } from '../db/connection';
 import { users, type User, type NewUser, type WechatUserInfo, LoginType } from '../db/schema/users';
 import { bizLog, perfLog } from '../plugins/logger';
+import { JWTUtils } from '../utils/jwt';
 import crypto from 'crypto';
 
 // 用户服务类
@@ -109,6 +110,24 @@ export class UserService {
   // 生成刷新令牌
   static generateRefreshToken(): string {
     return crypto.randomBytes(32).toString('hex');
+  }
+
+  // 生成JWT令牌对
+  static async generateJWTTokens(user: User) {
+    const payload = {
+      userId: user.id,
+      email: user.email || undefined,
+      phone: user.phone || undefined,
+      role: 'user', // 可以从用户表中获取角色信息
+      permissions: ['user:read', 'user:update'], // 可以从角色权限表中获取
+    };
+
+    return await JWTUtils.generateTokenPair(payload);
+  }
+
+  // 刷新JWT访问令牌
+  static async refreshJWTToken(refreshToken: string) {
+    return await JWTUtils.refreshAccessToken(refreshToken);
   }
 
   // 微信登录或注册
